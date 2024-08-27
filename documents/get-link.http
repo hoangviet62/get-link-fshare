@@ -1,0 +1,8 @@
+### GET
+GET https://www.fshare.vn/api/v3/files/folder?linkcode=YA819T776XVC&page=10&per-page=100 HTTP/1.1
+headers:
+  Accept: application/json, text/plain, */*
+  Content-Type: application/json
+  Accept-Language: vi-VN,vi
+  Referer: https://www.fshare.vn/folder/YA819T776XVC
+  User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/106.0.0.0 Safari/537.36
