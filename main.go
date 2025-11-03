@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"get-link-fshare/internal"
 	"io"
 	"net/http"
 	"strings"
@@ -28,6 +29,17 @@ type File struct {
 	Url string `json:"url"`
 }
 
+type GetLinksRequest struct {
+	Links  []string `json:"links"`
+	Cookie string   `json:"cookie"`
+}
+
+// RequestPayload structure for incoming JSON payload
+type RequestPayload struct {
+	Link   string `json:"link"`
+	Cookie string `json:"cookie"`
+}
+
 var DOMAIN = "https://www.fshare.vn"
 var DOMAIN_API string = fmt.Sprintf("%s/api", DOMAIN)
 var DOMAIN_FILE string = fmt.Sprintf("%s/file", DOMAIN)
@@ -43,7 +55,6 @@ func getLink(folderId string, page int, perPage int) Response {
 		"referer":         {fmt.Sprintf("https://www.fshare.vn/folder/%s", folderId)},
 		"user-agent":      {"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/106.0.0.0 Safari/537.36"},
 	}
-	fmt.Println(url)
 	if err != nil {
 		panic(err.Error())
 	}
@@ -62,11 +73,29 @@ func getLink(folderId string, page int, perPage int) Response {
 }
 
 func getLinks(c echo.Context) error {
-	folders := c.QueryParam("folders")
-	folderIds := strings.Split(folders, ",")
+	var req GetLinksRequest
+	body, err := io.ReadAll(c.Request().Body)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Failed to read body"})
+	}
+	if err := json.Unmarshal(body, &req); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid JSON"})
+	}
+	links := req.Links
+	cookie := req.Cookie
+
+	fileUrls := []string{}
+	folderIds := []string{}
+	for _, link := range links {
+		if checkFilOrFolder(link) {
+			folderId := getFolderIdFromUrl(link)
+			folderIds = append(folderIds, folderId)
+		} else {
+			fileUrls = append(fileUrls, link)
+		}
+	}
 	page := 1
 	perPage := 50
-	fileUrls := []string{}
 	counter := 0
 	var recursion func(folderIds []string, page int, perPage int)
 	recursion = func(folderIds []string, page int, perPage int) {
@@ -86,12 +115,68 @@ func getLinks(c echo.Context) error {
 		}
 	}
 	recursion(folderIds, page, perPage)
-	return c.JSONPretty(http.StatusOK, fileUrls, "")
+	fileUrls = uniqArray(fileUrls)
+	linkVips := []string{}
+	for _, fileUrl := range fileUrls {
+		linkVip, err := linkVipDotNet(fileUrl, cookie)
+		if err != nil {
+			fmt.Printf("link %s error: %s\n", fileUrl, err.Error())
+			continue
+		}
+		linkVips = append(linkVips, linkVip)
+	}
+	return c.JSONPretty(http.StatusOK, uniqArray(linkVips), "")
+}
+
+func checkFilOrFolder(url string) bool {
+	return strings.Contains(url, "/folder/")
+}
+
+func getFolderIdFromUrl(url string) string {
+	parts := strings.Split(url, "/folder/")
+	return parts[1]
+}
+
+func uniqArray(slice []string) []string {
+	keys := make(map[string]bool)
+	list := []string{}
+	for _, entry := range slice {
+		if _, value := keys[entry]; !value {
+			keys[entry] = true
+			list = append(list, entry)
+		}
+	}
+	return list
+}
+
+func linkVipDotNet(fileUrl string, cookie string) (string, error) {
+	// Parse JSON payload
+	var payload RequestPayload
+	if err := json.Unmarshal([]byte(fmt.Sprintf(`{"link": "%s", "cookie": "%s"}`, fileUrl, cookie)), &payload); err != nil {
+		return "", fmt.Errorf("failed to parse JSON payload: %w", err)
+	}
+
+	// Validate required fields
+	if payload.Link == "" {
+		return "", fmt.Errorf("link is required")
+	}
+
+	if payload.Cookie == "" {
+		return "", fmt.Errorf("cookie is required")
+	}
+
+	link, err := internal.FetchFshareLinks(
+		fmt.Sprintf("%s&pass=undefined&hash=&captcha=undefined", payload.Link),
+		payload.Cookie,
+	)
+	if err != nil {
+		return "", err
+	}
+	return link, nil
 }
 
 func main() {
-	// http://localhost:9090/get-links?folders=54X131MQJ887,1GY93EHX1ZLQ
 	e := echo.New()
-	e.GET("/get-links", getLinks)
-	e.Logger.Fatal(e.Start(":9090"))
+	e.POST("/get-links", getLinks)
+	e.Logger.Fatal(e.Start(":8080"))
 }

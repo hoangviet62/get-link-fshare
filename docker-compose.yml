@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  get-link-fshare:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: get-link-fshare
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+    networks:
+      - app-network
+    environment:
+      - TZ=UTC
+
+networks:
+  app-network:
+    driver: bridge
