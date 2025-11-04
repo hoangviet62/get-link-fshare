@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"get-link-fshare/internal"
 	"io"
+	"math/rand"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/labstack/echo"
 )
@@ -118,6 +120,8 @@ func getLinks(c echo.Context) error {
 	fileUrls = uniqArray(fileUrls)
 	linkVips := []string{}
 	for _, fileUrl := range fileUrls {
+		sleep := rand.Intn(1000) + 1000                     // 1-2 seconds
+		time.Sleep(time.Duration(sleep) * time.Millisecond) // sleep 1-2 seconds
 		linkVip, err := linkVipDotNet(fileUrl, cookie)
 		if err != nil {
 			fmt.Printf("link %s error: %s\n", fileUrl, err.Error())
