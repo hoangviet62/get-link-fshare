@@ -120,13 +120,15 @@ func getLinks(c echo.Context) error {
 	fileUrls = uniqArray(fileUrls)
 	linkVips := []string{}
 	for _, fileUrl := range fileUrls {
-		sleep := rand.Intn(1000) + 1000                     // 1-2 seconds
-		time.Sleep(time.Duration(sleep) * time.Millisecond) // sleep 1-2 seconds
+		// sleep 5-10 seconds
+		sleep := rand.Intn(100) + 5000                      // 5-10 seconds
+		time.Sleep(time.Duration(sleep) * time.Millisecond) // sleep 5-10 seconds
 		linkVip, err := linkVipDotNet(fileUrl, cookie)
 		if err != nil {
 			fmt.Printf("link %s error: %s\n", fileUrl, err.Error())
 			continue
 		}
+		fmt.Printf("%s \n", fileUrl)
 		linkVips = append(linkVips, linkVip)
 	}
 	return c.JSONPretty(http.StatusOK, uniqArray(linkVips), "")
