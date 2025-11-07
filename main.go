@@ -13,6 +13,11 @@ import (
 	"github.com/labstack/echo"
 )
 
+const (
+	hashCharset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	hashLength  = 84
+)
+
 type Item struct {
 	Linkcode string `json:"linkcode"`
 }
@@ -155,6 +160,15 @@ func uniqArray(slice []string) []string {
 	return list
 }
 
+func generateRandomHash() string {
+	rand.Seed(time.Now().UnixNano())
+	b := make([]byte, hashLength)
+	for i := range b {
+		b[i] = hashCharset[rand.Intn(len(hashCharset))]
+	}
+	return string(b)
+}
+
 func linkVipDotNet(fileUrl string, cookie string) (string, error) {
 	// Parse JSON payload
 	var payload RequestPayload
@@ -171,8 +185,10 @@ func linkVipDotNet(fileUrl string, cookie string) (string, error) {
 		return "", fmt.Errorf("cookie is required")
 	}
 
+	randomHash := generateRandomHash()
+
 	link, err := internal.FetchFshareLinks(
-		fmt.Sprintf("%s&pass=undefined&hash=&captcha=undefined", payload.Link),
+		fmt.Sprintf("%s&pass=undefined&hash=%s&captcha=undefined", payload.Link, randomHash),
 		payload.Cookie,
 	)
 	if err != nil {
