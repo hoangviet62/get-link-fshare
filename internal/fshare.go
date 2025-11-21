@@ -61,6 +61,7 @@ func FetchFshareLinks(link string, cookie string) (string, error) {
 
 	switch apiResp.Trangthai {
 	case "1":
+		fmt.Printf("apiResp: %v\n", apiResp)
 		finalResp = FinalResponse{
 			Messages: []Message{
 				{Text: "Link của bạn đã sẵn sàng để download. <3"},
@@ -69,6 +70,7 @@ func FetchFshareLinks(link string, cookie string) (string, error) {
 			},
 		}
 	default:
+		fmt.Printf("apiResp: %v\n", apiResp)
 		finalResp = FinalResponse{
 			Messages: []Message{
 				{Text: apiResp.Loi},
